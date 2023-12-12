@@ -12,9 +12,7 @@ model = load_model("keras_model.h5", compile=False)
 
 # Load the labels
 class_names = open("labels.txt", "r").readlines()
-@app.route('/',methods=["GET"])
-def home():
-    return f"Server is running on port {port}"
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
