@@ -5,7 +5,7 @@ import numpy as np
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app,origins='*')
 
 port = 4000
 
