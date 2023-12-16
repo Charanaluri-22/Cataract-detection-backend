@@ -3,19 +3,24 @@ from keras.models import load_model
 from PIL import Image, ImageOps
 import numpy as np
 from flask_cors import CORS
+
 app = Flask(__name__)
 CORS(app)
 
-port=4000
+port = 4000
+
 # Load the model
 model = load_model("keras_model.h5", compile=False)
 
 # Load the labels
-class_names = open("labels.txt", "r").readlines()
+class_names = [line.strip() for line in open("labels.txt", "r").readlines()]
+
+# Confidence threshold for predictions
+confidence_threshold = 0.7
+
 @app.route('/')
 def hello():
     return f"Server is running on port {port}"
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -42,15 +47,22 @@ def predict():
 
         # Predict
         prediction = model.predict(data)
-        index = np.argmax(prediction)
-        class_name = class_names[index]
-        confidence_score = prediction[0][index]
+        max_confidence = np.max(prediction)
+
+        if max_confidence >= confidence_threshold:
+            index = np.argmax(prediction)
+            class_name = class_names[index]
+            confidence_score = float(prediction[0][index])
+        else:
+            # Classify as "other" if confidence is below threshold
+            class_name = "Other"
+            confidence_score = float(max_confidence)
 
         # Return the result
         return jsonify({
-            'class': class_name.strip(),
-            'confidence_score': float(confidence_score)
+            'class': class_name,
+            'confidence_score': confidence_score
         })
 
 if __name__ == '__main__':
-    app.run(debug=True,port=port)
+    app.run(debug=True, port=port)
