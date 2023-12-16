@@ -59,10 +59,8 @@ def predict():
             confidence_score = float(max_confidence)
 
         # Return the result
-        return jsonify({
-            'class': class_name,
-            'confidence_score': confidence_score
-        })
-
+        response = jsonify({'class': class_name, 'confidence_score': confidence_score})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 if __name__ == '__main__':
     app.run(debug=True, port=port)
