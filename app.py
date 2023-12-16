@@ -5,8 +5,7 @@ import numpy as np
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app,origins=['*',"http://localhost:3000"])
-
+CORS(app,origin=['*','http://localhost:3000'],allow_headers=['Content-Type','Authorization','Access-Control-Allow-Credentials','Access-Control-Allow-Origin','Access-Control-Allow-Headers','x-xsrf-token','Access-Control-Allow-Methods','Access-Control-Allow-Headers','Access-Control-Allow-Headers','Access-Control-Allow-Origin','Access-Control-Allow-Methods','Authorization','X-Requested-With','Access-Control-Request-Headers','Access-Control-Request-Method'])
 port = 4000
 
 # Load the model
@@ -60,7 +59,6 @@ def predict():
 
         # Return the result
         response = jsonify({'class': class_name, 'confidence_score': confidence_score})
-        response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 if __name__ == '__main__':
     app.run(debug=True, port=port)
