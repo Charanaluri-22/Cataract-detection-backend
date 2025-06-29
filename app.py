@@ -5,14 +5,18 @@ import numpy as np
 from flask_cors import CORS
 import cv2
 import os
+from dotenv import load_dotenv
 
+ # Load environment variables from .env and .flaskenv
+load_dotenv()
 # Load Haar cascade classifiers for face and eye detection
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
 
+frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 app = Flask(__name__)
-CORS(app,origin=['*','http://localhost:3000'],allow_headers=['Content-Type','Authorization','Access-Control-Allow-Credentials','Access-Control-Allow-Origin','Access-Control-Allow-Headers','x-xsrf-token','Access-Control-Allow-Methods','Access-Control-Allow-Headers','Access-Control-Allow-Headers','Access-Control-Allow-Origin','Access-Control-Allow-Methods','Authorization','X-Requested-With','Access-Control-Request-Headers','Access-Control-Request-Method'])
+CORS(app,origin=[frontend_url],allow_headers=['Content-Type','Authorization','Access-Control-Allow-Credentials','Access-Control-Allow-Origin','Access-Control-Allow-Headers','x-xsrf-token','Access-Control-Allow-Methods','Access-Control-Allow-Headers','Access-Control-Allow-Headers','Access-Control-Allow-Origin','Access-Control-Allow-Methods','Authorization','X-Requested-With','Access-Control-Request-Headers','Access-Control-Request-Method'])
 port = 5000
 
 # Load the model
@@ -38,27 +42,30 @@ def predict():
     cv_img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
     gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
     eye_img = None
 
-    # Try to detect face and extract eye
-    for (x, y, w, h) in faces:
-        roi_gray = gray[y:y + h, x:x + w]
-        roi_color = cv_img[y:y + h, x:x + w]
-        eyes = eye_cascade.detectMultiScale(roi_gray)
-        if len(eyes) > 0:
-            ex, ey, ew, eh = eyes[0]
-            eye_img = roi_color[ey:ey + eh, ex:ex + ew]
-            break
+    # Try detecting eyes directly in the full image
+    eyes = eye_cascade.detectMultiScale(gray)
+    if len(eyes) > 0:
+        ex, ey, ew, eh = eyes[0]
+        eye_img = cv_img[ey:ey + eh, ex:ex + ew]
+    else:
+        # Try detecting face and extract eye
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        for (x, y, w, h) in faces:
+            roi_gray = gray[y:y + h, x:x + w]
+            roi_color = cv_img[y:y + h, x:x + w]
+            eyes = eye_cascade.detectMultiScale(roi_gray)
+            if len(eyes) > 0:
+                ex, ey, ew, eh = eyes[0]
+                eye_img = roi_color[ey:ey + eh, ex:ex + ew]
+                break
 
-    # If no face or eye detected, fallback to assume the uploaded image is an eye
+    # If no eye image was found
     if eye_img is None:
-        if cv_img.shape[0] < 30 or cv_img.shape[1] < 30:
-            return jsonify({'error': 'Image too small or invalid for eye prediction'}), 400
-        eye_img = cv_img  # Use entire image as eye
+        return jsonify({'error': 'Invalid image: No face or eye detected'}), 400
 
-    # Resize and preprocess the image (eye)
+    # Resize and preprocess the eye image
     eye_img_rgb = cv2.cvtColor(eye_img, cv2.COLOR_BGR2RGB)
     image_pil = Image.fromarray(eye_img_rgb).convert("RGB")
     size = (224, 224)
